@@ -2,7 +2,7 @@
 using LLamaHub.Core.LLamaSharp;
 using System.Collections.Concurrent;
 
-namespace LLamaHub.Core
+namespace LLamaHub.Core.Services
 {
     public class ModelService : IModelService
     {

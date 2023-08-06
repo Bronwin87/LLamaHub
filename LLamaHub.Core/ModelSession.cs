@@ -1,20 +1,21 @@
-﻿using LLama.Abstractions;
+﻿using LLama;
+using LLama.Abstractions;
+using LLamaHub.Core.Config;
 using LLamaHub.Core.LLamaSharp;
-using LLamaHub.Web.Common;
 
-namespace LLama.Web.Models
+namespace LLamaHub.Core
 {
     public class ModelSession
     {
         private bool _isFirstInteraction = true;
         private IModelParams _modelParams;
-        private PromptOptions _promptOptions;
+        private PromptConfig _promptOptions;
         private IInferenceParams _inferenceParams;
         private ITextStreamTransform _outputTransform;
         private ILLamaHubExecutor _executor;
         private CancellationTokenSource _cancellationTokenSource;
 
-        public ModelSession(ILLamaHubExecutor executor, IModelParams modelOptions, PromptOptions promptOptions, IInferenceParams inferenceParams)
+        public ModelSession(ILLamaHubExecutor executor, IModelParams modelOptions, PromptConfig promptOptions, IInferenceParams inferenceParams)
         {
             _executor = executor;
             _modelParams = modelOptions;

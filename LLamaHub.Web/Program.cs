@@ -1,8 +1,6 @@
-using LLamaHub.Core;
 using LLamaHub.Core.Config;
-using LLamaHub.Web.Common;
+using LLamaHub.Core.Services;
 using LLamaHub.Web.Hubs;
-using LLamaHub.Web.Services;
 
 namespace LLamaHub.Web
 {
@@ -23,7 +21,7 @@ namespace LLamaHub.Web
 
             // Services DI
             builder.Services.AddSingleton<IModelService, ModelService>();
-            builder.Services.AddSingleton<ModelSessionService>();
+            builder.Services.AddSingleton<IModelSessionService, ModelSessionService>();
 
 
             var app = builder.Build();

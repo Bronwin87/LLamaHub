@@ -1,4 +1,4 @@
-﻿namespace LLamaHub.Web.Models
+﻿namespace LLamaHub.Core.Models
 {
     public class ResponseFragment
     {

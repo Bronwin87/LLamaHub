@@ -1,8 +1,8 @@
 ﻿using LLama.Abstractions;
 using LLama.Common;
-using LLamaHub.Web.Common;
 
-namespace LLamaHub.Web.Models
+
+namespace LLamaHub.Core.Models
 {
     public class CreateSessionModel : IInferenceParams
     {

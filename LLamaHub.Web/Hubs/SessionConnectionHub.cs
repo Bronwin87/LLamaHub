@@ -1,6 +1,6 @@
-﻿using LLamaHub.Web.Common;
-using LLamaHub.Web.Models;
-using LLamaHub.Web.Services;
+﻿using LLamaHub.Core.Models;
+using LLamaHub.Core.Services;
+using LLamaHub.Web.Common;
 using Microsoft.AspNetCore.SignalR;
 
 namespace LLamaHub.Web.Hubs
@@ -8,9 +8,9 @@ namespace LLamaHub.Web.Hubs
     public class SessionConnectionHub : Hub<ISessionClient>
     {
         private readonly ILogger<SessionConnectionHub> _logger;
-        private readonly ModelSessionService _modelSessionService;
+        private readonly IModelSessionService _modelSessionService;
 
-        public SessionConnectionHub(ILogger<SessionConnectionHub> logger, ModelSessionService modelSessionService)
+        public SessionConnectionHub(ILogger<SessionConnectionHub> logger, IModelSessionService modelSessionService)
         {
             _logger = logger;
             _modelSessionService = modelSessionService;

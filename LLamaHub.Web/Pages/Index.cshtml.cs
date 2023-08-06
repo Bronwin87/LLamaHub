@@ -1,19 +1,19 @@
 ﻿using LLamaHub.Core.Config;
-using LLamaHub.Web.Common;
+using LLamaHub.Core.Models;
+using LLamaHub.Core.Services;
 using LLamaHub.Web.Models;
-using LLamaHub.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options;
 
 namespace LLamaHub.Web.Pages
 {
-	public class IndexModel : PageModel
+    public class IndexModel : PageModel
     {
         private readonly ILogger<IndexModel> _logger;
-        private readonly ModelSessionService _modelSessionService;
+        private readonly IModelSessionService _modelSessionService;
 
-        public IndexModel(ILogger<IndexModel> logger, IOptions<LLamaHubConfig> options, ModelSessionService modelSessionService)
+        public IndexModel(ILogger<IndexModel> logger, IOptions<LLamaHubConfig> options, IModelSessionService modelSessionService)
         {
             _logger = logger;
             Options = options.Value;

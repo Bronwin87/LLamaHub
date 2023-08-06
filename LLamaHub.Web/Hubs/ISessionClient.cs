@@ -1,5 +1,5 @@
-﻿using LLamaHub.Web.Common;
-using LLamaHub.Web.Models;
+﻿using LLamaHub.Core.Models;
+using LLamaHub.Web.Common;
 
 namespace LLamaHub.Web.Hubs
 {

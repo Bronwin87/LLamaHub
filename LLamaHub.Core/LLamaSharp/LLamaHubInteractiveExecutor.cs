@@ -9,34 +9,26 @@ namespace LLamaHub.Core.LLamaSharp
 {
     using llama_token = Int32;
     /// <summary>
-    /// The LLama executor for instruct mode.
+    /// The LLama executor for interactive mode.
     /// </summary>
-    public class LLamaHubInstructExecutor : LLamaHubStatefulExecutorBase
+    public class LLamaHubInteractiveExecutor : LLamaHubStatefulExecutorBase
     {
         bool _is_prompt_run = true;
-        string _instructionPrefix;
-        llama_token[] _inp_pfx;
-        llama_token[] _inp_sfx;
+        llama_token[] _llama_token_newline;
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="model"></param>
-        /// <param name="instructionPrefix"></param>
-        /// <param name="instructionSuffix"></param>
-        public LLamaHubInstructExecutor(LLamaHubModelContext context, string instructionPrefix = "\n\n### Instruction:\n\n", string instructionSuffix = "\n\n### Response:\n\n")
-            : base(context)
+        public LLamaHubInteractiveExecutor(LLamaHubModelContext context) : base(context)
         {
-
-            _inp_pfx = context.Tokenize(instructionPrefix, true).ToArray();
-            _inp_sfx = context.Tokenize(instructionSuffix, false).ToArray();
-            _instructionPrefix = instructionPrefix;
+            _llama_token_newline = Utils.Tokenize(_context.NativeHandle, "\n", false, _context.Encoding).ToArray();
         }
 
         /// <inheritdoc />
         public override ExecutorBaseState GetStateData()
         {
-            InstructExecutorState state = new()
+            InteractiveExecutorState state = new()
             {
                 ConsumedSessionCount = _n_session_consumed,
                 EmbedInps = _embed_inps,
@@ -44,8 +36,7 @@ namespace LLamaHub.Core.LLamaSharp
                 ConsumedTokensCount = _consumedTokensCount,
                 Embeds = _embeds,
                 LastTokens = _last_n_tokens.ToArray(),
-                InputPrefixTokens = _inp_pfx,
-                InputSuffixTokens = _inp_sfx,
+                LLamaNewlineTokens = _llama_token_newline,
                 MatchingSessionTokensCount = _n_matching_session_tokens,
                 PastTokensCount = _pastTokensCount,
                 SessionFilePath = _pathSession,
@@ -58,7 +49,7 @@ namespace LLamaHub.Core.LLamaSharp
         /// <inheritdoc />
         public override void LoadState(ExecutorBaseState data)
         {
-            if (data is InstructExecutorState state)
+            if (data is InteractiveExecutorState state)
             {
                 _n_session_consumed = state.ConsumedSessionCount;
                 _embed_inps = state.EmbedInps;
@@ -66,26 +57,22 @@ namespace LLamaHub.Core.LLamaSharp
                 _consumedTokensCount = state.ConsumedTokensCount;
                 _embeds = state.Embeds;
                 _last_n_tokens = new FixedSizeQueue<llama_token>(state.LastTokensCapacity, state.LastTokens);
-                _inp_pfx = state.InputPrefixTokens;
-                _inp_sfx = state.InputSuffixTokens;
+                _llama_token_newline = state.LLamaNewlineTokens;
                 _n_matching_session_tokens = state.MatchingSessionTokensCount;
                 _pastTokensCount = state.PastTokensCount;
                 _pathSession = state.SessionFilePath;
                 _session_tokens = state.SessionTokens;
             }
             else
-            {
                 throw new ArgumentException("Invalid state data type.");
-            }
         }
-
         /// <inheritdoc />
         public override void SaveState(string filename)
         {
-            InstructExecutorState state = GetStateData() as InstructExecutorState;
+            InteractiveExecutorState state = GetStateData() as InteractiveExecutorState;
             using (FileStream fs = new FileStream(filename, FileMode.OpenOrCreate, FileAccess.Write))
             {
-                JsonSerializer.Serialize<InstructExecutorState>(fs, state);
+                JsonSerializer.Serialize<InteractiveExecutorState>(fs, state);
             }
         }
         /// <inheritdoc />
@@ -93,24 +80,23 @@ namespace LLamaHub.Core.LLamaSharp
         {
             using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
             {
-                var state = JsonSerializer.Deserialize<InstructExecutorState>(fs);
+                var state = JsonSerializer.Deserialize<InteractiveExecutorState>(fs);
                 LoadState(state);
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Define whether to continue the loop to generate responses.
+        /// </summary>
+        /// <returns></returns>
         protected override bool GetLoopCondition(InferStateArgs args)
         {
-            return args.RemainedTokens != 0 || _is_prompt_run;
+            return args.RemainedTokens != 0 && !args.WaitForInput || _is_prompt_run;
         }
+
         /// <inheritdoc />
         protected override void PreprocessInputs(string text, InferStateArgs args)
         {
-            if (args.Antiprompts is null)
-            {
-                args.Antiprompts = new List<string>();
-            }
-            args.Antiprompts.Add(_instructionPrefix);
             if (_is_prompt_run)
             {
                 // When running the first input (prompt) in inteactive mode, we should specially process it.
@@ -123,19 +109,18 @@ namespace LLamaHub.Core.LLamaSharp
                 {
                     text += "\n";
                 }
-                _consumedTokensCount = _embed_inps.Count;
-                _embed_inps.AddRange(_inp_pfx);
-
                 var line_inp = _context.Tokenize(text, false);
                 _embed_inps.AddRange(line_inp);
-
-                _embed_inps.AddRange(_inp_sfx);
-
                 args.RemainedTokens -= line_inp.Count();
             }
         }
-        /// <inheritdoc />
-        protected override bool PostProcess(IInferenceParams inferenceParams, InferStateArgs args, out IEnumerable<string> extraOutputs)
+
+        /// <summary>
+        /// Return whether to break the generation.
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        protected override bool PostProcess(IInferenceParams inferenceParams, InferStateArgs args, out IEnumerable<string>? extraOutputs)
         {
             extraOutputs = null;
             if (_embed_inps.Count <= _consumedTokensCount)
@@ -153,21 +138,21 @@ namespace LLamaHub.Core.LLamaSharp
                         if (last_output.EndsWith(antiprompt))
                         {
                             args.WaitForInput = true;
-                            return true;
+                            break;
                         }
                     }
                 }
 
                 if (_pastTokensCount > 0 && args.WaitForInput)
                 {
-                    extraOutputs = new string[] { "\n> " };
                     return true;
                 }
             }
 
             if (_embeds.Count > 0 && _embeds.Last() == NativeApi.llama_token_eos())
             {
-                args.WaitForInput = true;
+                extraOutputs = new string[] { " [end of text]\n" };
+                return true;
             }
 
             if (args.RemainedTokens <= 0 && inferenceParams.MaxTokens != -1)
@@ -177,6 +162,7 @@ namespace LLamaHub.Core.LLamaSharp
             }
             return false;
         }
+
         /// <inheritdoc />
         protected override void InferInternal(IInferenceParams inferenceParams, InferStateArgs args)
         {
@@ -204,6 +190,13 @@ namespace LLamaHub.Core.LLamaSharp
             {
                 var repeat_last_n = inferenceParams.RepeatLastTokensCount < 0 ? _context.ContextSize : inferenceParams.RepeatLastTokensCount;
 
+                // optionally save the session on first sample (for faster prompt loading next time)
+                if (!string.IsNullOrEmpty(_pathSession) && args.NeedToSaveSession)
+                {
+                    args.NeedToSaveSession = false;
+                    SaveSessionFile(_pathSession);
+                }
+
                 var tokenDataArray = _context.ApplyPenalty(_last_n_tokens, inferenceParams.LogitBias, repeat_last_n,
                     inferenceParams.RepeatPenalty, inferenceParams.FrequencyPenalty, inferenceParams.PresencePenalty, inferenceParams.PenalizeNL);
 
@@ -215,6 +208,16 @@ namespace LLamaHub.Core.LLamaSharp
                 MirostateMu = mu;
 
                 _last_n_tokens.Enqueue(id);
+
+                if (id == NativeApi.llama_token_eos())
+                {
+                    id = _llama_token_newline.First();
+                    if (args.Antiprompts is not null && args.Antiprompts.Count > 0)
+                    {
+                        var first_antiprompt = _context.Tokenize(args.Antiprompts[0], false);
+                        _embed_inps.AddRange(first_antiprompt);
+                    }
+                }
 
                 _embeds.Add(id);
 
@@ -237,9 +240,9 @@ namespace LLamaHub.Core.LLamaSharp
         }
 
         /// <summary>
-        /// The desciptor of the state of the instruct executor.
+        /// The descriptor of the state of the interactive executor.
         /// </summary>
-        public class InstructExecutorState : ExecutorBaseState
+        public class InteractiveExecutorState : ExecutorBaseState
         {
             /// <summary>
             /// Whether the executor is running for the first time (running the prompt).
@@ -247,15 +250,10 @@ namespace LLamaHub.Core.LLamaSharp
             [JsonPropertyName("is_prompt_run")]
             public bool IsPromptRun { get; set; }
             /// <summary>
-            /// Instruction prefix tokens.
+            /// Tokens that represent a new line in with the current model.
             /// </summary>
-            [JsonPropertyName("inp_pfx")]
-            public llama_token[] InputPrefixTokens { get; set; }
-            /// <summary>
-            /// Instruction suffix tokens.
-            /// </summary>
-            [JsonPropertyName("inp_sfx")]
-            public llama_token[] InputSuffixTokens { get; set; }
+            [JsonPropertyName("llama_token_newline")]
+            public llama_token[] LLamaNewlineTokens { get; set; }
         }
     }
 }

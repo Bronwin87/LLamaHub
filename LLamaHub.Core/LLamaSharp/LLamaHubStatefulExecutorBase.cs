@@ -1,5 +1,8 @@
-﻿using LLama.Abstractions;
+﻿using LLama;
+using LLama.Abstractions;
 using LLama.Common;
+using LLama.Exceptions;
+using LLama.Native;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
@@ -84,6 +87,78 @@ namespace LLamaHub.Core.LLamaSharp
 
 
         /// <summary>
+        /// This API is currently not verified.
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="RuntimeError"></exception>
+        public unsafe LLamaHubStatefulExecutorBase WithSessionFile(string filename)
+        {
+            _pathSession = filename;
+            if (string.IsNullOrEmpty(filename))
+            {
+                throw new ArgumentNullException(nameof(filename), "File name cannot be empty.");
+            }
+            if (File.Exists(filename))
+            {
+                _logger?.Log("LLamaExecutor", $"Attempting to load saved session from {filename}", ILLamaLogger.LogLevel.Info);
+                llama_token[] session_tokens = new llama_token[_context.ContextSize];
+                ulong n_token_count_out = 0;
+                if (!NativeApi.llama_load_session_file(_context.NativeHandle, _pathSession, session_tokens, (ulong)_context.ContextSize, &n_token_count_out))
+                {
+                    _logger?.Log("LLamaExecutor", $"Failed to load session file {filename}", ILLamaLogger.LogLevel.Error);
+                    throw new RuntimeError($"Failed to load session file {_pathSession}");
+                }
+                _session_tokens = session_tokens.Take((int)n_token_count_out).ToList();
+                _logger?.Log("LLamaExecutor", $"Loaded a session with prompt size of {session_tokens.Length} tokens", ILLamaLogger.LogLevel.Info);
+            }
+            else
+            {
+                _logger?.Log("LLamaExecutor", $"Session file does not exist, will create", ILLamaLogger.LogLevel.Warning);
+            }
+
+            _n_matching_session_tokens = 0;
+            if (_session_tokens.Count > 0)
+            {
+                foreach (var id in _session_tokens)
+                {
+                    if (_n_matching_session_tokens >= _embed_inps.Count || id != _embed_inps[_n_matching_session_tokens])
+                    {
+                        break;
+                    }
+                    _n_matching_session_tokens++;
+                }
+                if (_n_matching_session_tokens >= _embed_inps.Count)
+                {
+                    _logger?.Log("LLamaExecutor", $"Session file has exact match for prompt!", ILLamaLogger.LogLevel.Info);
+                }
+                else if (_n_matching_session_tokens < _embed_inps.Count / 2)
+                {
+                    _logger?.Log("LLamaExecutor", $"session file has low similarity to prompt ({_n_matching_session_tokens}" +
+                        $" / {_embed_inps.Count} tokens); will mostly be reevaluated", ILLamaLogger.LogLevel.Warning);
+                }
+                else
+                {
+                    _logger?.Log("LLamaExecutor", $"Session file matches {_n_matching_session_tokens} / " +
+                        $"{_embed_inps.Count} tokens of prompt", ILLamaLogger.LogLevel.Info);
+                }
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// This API has not been verified currently.
+        /// </summary>
+        /// <param name="filename"></param>
+        public void SaveSessionFile(string filename)
+        {
+            var session_token_array = _session_tokens.ToArray();
+            NativeApi.llama_save_session_file(_context.NativeHandle, filename, session_token_array, (ulong)session_token_array.Length);
+        }
+
+        /// <summary>
         /// After running out of the context, take some tokens from the original prompt and recompute the logits in batches.
         /// </summary>
         /// <param name="tokensToKeep"></param>
@@ -163,6 +238,29 @@ namespace LLamaHub.Core.LLamaSharp
         /// <param name="args"></param>
         protected abstract void InferInternal(IInferenceParams inferenceParams, InferStateArgs args);
 
+        /// <summary>
+        /// Save the current state to a file.
+        /// </summary>
+        /// <param name="filename"></param>
+        public abstract void SaveState(string filename);
+
+        /// <summary>
+        /// Get the current state data.
+        /// </summary>
+        /// <returns></returns>
+        public abstract ExecutorBaseState GetStateData();
+
+        /// <summary>
+        /// Load the state from data.
+        /// </summary>
+        /// <param name="data"></param>
+        public abstract void LoadState(ExecutorBaseState data);
+
+        /// <summary>
+        /// Load the state from a file.
+        /// </summary>
+        /// <param name="filename"></param>
+        public abstract void LoadState(string filename);
 
         /// <summary>
         /// Execute the inference.

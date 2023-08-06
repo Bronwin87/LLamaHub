@@ -1,4 +1,4 @@
-﻿namespace LLamaHub.Web.Common
+﻿namespace LLamaHub.Core
 {
     public class ServiceResult<T> : ServiceResult, IServiceResult<T>
     {

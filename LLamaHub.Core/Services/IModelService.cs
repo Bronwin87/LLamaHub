@@ -1,7 +1,7 @@
 ﻿using LLamaHub.Core.Config;
 using LLamaHub.Core.LLamaSharp;
 
-namespace LLamaHub.Core
+namespace LLamaHub.Core.Services
 {
     public interface IModelService
     {

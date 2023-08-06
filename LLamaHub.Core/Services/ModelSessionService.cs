@@ -1,20 +1,18 @@
-﻿using LLama.Web.Models;
-using LLamaHub.Core;
-using LLamaHub.Core.Config;
+﻿using LLamaHub.Core.Config;
 using LLamaHub.Core.LLamaSharp;
-using LLamaHub.Web.Common;
-using LLamaHub.Web.Models;
+using LLamaHub.Core.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace LLamaHub.Web.Services
+namespace LLamaHub.Core.Services
 {
-	/// <summary>
-	/// Example Service for handling a model session for a websockets connection lifetime
-	/// Each websocket connection will create its own unique session and context allowing you to use multiple tabs to compare prompts etc
-	/// </summary>
-	public class ModelSessionService : IModelSessionService
+    /// <summary>
+    /// Example Service for handling a model session for a websockets connection lifetime
+    /// Each websocket connection will create its own unique session and context allowing you to use multiple tabs to compare prompts etc
+    /// </summary>
+    public class ModelSessionService : IModelSessionService
     {
         private readonly LLamaHubConfig _options;
         private readonly ILogger<ModelSessionService> _logger;
@@ -37,20 +35,20 @@ namespace LLamaHub.Web.Services
         }
 
 
-        public async Task<IServiceResult<ModelSession>> CreateAsync(string sessionId, CreateSessionModel sessionModel)
+        public async Task<ModelSession> CreateAsync(string sessionId, CreateSessionModel sessionModel)
         {
             // Remove existing connections session
             await RemoveAsync(sessionId);
 
             var modelOption = _options.Models.FirstOrDefault(x => x.Name == sessionModel.Model);
             if (modelOption is null)
-                return ServiceResult.FromError<ModelSession>($"Model option '{sessionModel.Model}' not found");
+                throw new Exception($"Model option '{sessionModel.Model}' not found");
 
 
             //Max instance
             var currentInstances = _modelSessions.Count(x => x.Value.ModelName == modelOption.Name);
             if (modelOption.MaxInstances > -1 && currentInstances >= modelOption.MaxInstances)
-                return ServiceResult.FromError<ModelSession>("Maximum model instances reached");
+                throw new Exception($"Maximum model instances reached");
 
             // Create Model/Context
             var llamaModelContext = await CreateModelContext(sessionId, modelOption);
@@ -58,14 +56,14 @@ namespace LLamaHub.Web.Services
             // Create executor
             ILLamaHubExecutor executor = sessionModel.ExecutorType switch
             {
-             //   LLamaExecutorType.Interactive => new LLamaHubInstructExecutor(llamaModelContext),
-                LLamaExecutorType.Instruct => new LLamaHubInstructExecutor(llamaModelContext), //TODO
-             //   LLamaExecutorType.Stateless => new LLamaHubInstructExecutor(llamaModelContext),//TODO
-				_ => default
+                LLamaExecutorType.Interactive => new LLamaHubInteractiveExecutor(llamaModelContext),
+                LLamaExecutorType.Instruct => new LLamaHubInstructExecutor(llamaModelContext),
+                LLamaExecutorType.Stateless => new LLamaHubStatelessExecutor(llamaModelContext),
+                _ => default
             };
 
             // Create Prompt
-            var promptOption = new PromptOptions
+            var promptOption = new PromptConfig
             {
                 Name = "Custom",
                 Prompt = sessionModel.Prompt,
@@ -76,9 +74,9 @@ namespace LLamaHub.Web.Services
             // Create session
             var modelSession = new ModelSession(executor, modelOption, promptOption, sessionModel);
             if (!_modelSessions.TryAdd(sessionId, modelSession))
-                return ServiceResult.FromError<ModelSession>("Failed to create model session");
+                throw new Exception($"Failed to create model session");
 
-            return ServiceResult.FromValue<ModelSession>(default);
+            return modelSession;
         }
 
 
@@ -168,12 +166,12 @@ namespace LLamaHub.Web.Services
 
         private List<string> CreateListFromCSV(string csv)
         {
-            if(string.IsNullOrEmpty(csv))
+            if (string.IsNullOrEmpty(csv))
                 return null;
 
-           return csv.Split(",")
-                .Select(x => x.Trim())
-                .ToList();
+            return csv.Split(",")
+                 .Select(x => x.Trim())
+                 .ToList();
         }
     }
 }

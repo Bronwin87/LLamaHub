@@ -1,6 +1,6 @@
-﻿namespace LLamaHub.Web.Common
+﻿namespace LLamaHub.Core.Config
 {
-    public class PromptOptions
+    public class PromptConfig
     {
         public string Name { get; set; }
         public string Path { get; set; }
