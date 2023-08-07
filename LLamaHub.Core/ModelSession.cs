@@ -8,17 +8,15 @@ namespace LLamaHub.Core
 {
     public class ModelSession
     {
-        private readonly IModelParams _modelParams;
         private readonly ILLamaHubExecutor _executor;
         private readonly ISessionConfig _sessionParams;
-         
+
         private IPromptParams _promptParams;
         private ITextStreamTransform _outputTransform;
         private CancellationTokenSource _cancellationTokenSource;
 
-        public ModelSession(LLamaHubModelContext context, IModelParams modelOptions, ISessionConfig sessionConfig)
+        public ModelSession(LLamaHubModelContext context, ISessionConfig sessionConfig)
         {
-            _modelParams = modelOptions;
             _sessionParams = sessionConfig;
             _executor = sessionConfig.ExecutorType switch
             {
@@ -33,7 +31,7 @@ namespace LLamaHub.Core
 
         public string ModelName
         {
-            get { return _modelParams.ModelAlias; }
+            get { return _sessionParams.Model; }
         }
 
         public IAsyncEnumerable<string> InferAsync(string message, CancellationTokenSource cancellationTokenSource)
@@ -69,7 +67,7 @@ namespace LLamaHub.Core
 
             // Anti prompt
             _sessionParams.AntiPrompts = _promptParams.AntiPrompt?.Concat(_sessionParams.AntiPrompts ?? Enumerable.Empty<string>()).Distinct() ?? _sessionParams.AntiPrompts;
-           
+
             //Output Filter
             if (_promptParams.OutputFilter?.Count > 0)
                 _outputTransform = new LLamaTransforms.KeywordTextOutputStreamTransform(_promptParams.OutputFilter, redundancyLength: 8);

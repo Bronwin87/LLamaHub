@@ -19,12 +19,20 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                    <ul class="navbar-nav flex-grow-1 justify-content-between">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-page="/Index">UI</a>
+                            <a class="nav-link text-dark" asp-page="/Index"></a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" href="/Swagger">API</a>
+                            <a class="nav-link text-dark" href="https://github.com/saddam213/LLamaHub" target="_blank">
+
+                                <div class="d-flex flex-row align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-github"></i>
+                                        <span>LLamaHub</span>
+                                    </h5>
+                                </div>
+                            </a>
                         </li>
                     </ul>
                 </div>
@@ -32,9 +40,9 @@
         </nav>
     </header>
 
-        <main class="container" role="main" >
-            @RenderBody()
-        </main>
+    <main class="container" role="main">
+        @RenderBody()
+    </main>
 
 
     <footer class="border-top footer text-muted">

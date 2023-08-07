@@ -51,7 +51,7 @@ namespace LLamaHub.Core.Services
 
             // Create context session
             var context = await CreateModelContext(sessionId, modelConfig);
-            var modelSession = new ModelSession(context, modelConfig, sessionConfig);
+            var modelSession = new ModelSession(context, sessionConfig);
             if (!_modelSessions.TryAdd(sessionId, modelSession))
                 throw new Exception($"Failed to create model session");
 
