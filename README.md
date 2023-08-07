@@ -8,7 +8,26 @@ Welcome to LLamaHub! This repository serves as a collection of multiple UI & API
 LLamaHub is built on top of the popular LLamaSharp and llama.cpp projects, extending their functionalities with a range of user-friendly UI applications. LLamaSharp is a powerful library that provides C# interfaces and abstractions for the popular llama.cpp, the C++ counterpart that offers high-performance inference capabilities on low end hardware. LLamaHub complements these projects by creating intuitive UI & API interfaces, making the power of LLamaSharp and llama.cpp more accessible to users.
 
 
-## Multiple Context Implemetation
+
+
+
+## Projects
+
+Here are the UI projects included in LLamaHub:
+
+1. **LLamaWeb**: ASP.NET Core Web interface with all the base functions of llama.cpp & LLamaSharp
+
+[WebInterface Demo](https://llamaweb.chainstack.nz/)
+
+![demo-ui2](https://i.imgur.com/fZEQTQ5.png)
+
+2. **LLamaAPI**: ASP.NET Core WebAPI implemntation with all the base functions of llama.cpp & LLamaSharp
+
+3. **LLamaWPF**: WPF UI interface with all the base functions of llama.cpp & LLamaSharp
+
+4. **LLamaSignalr**: Signale websocket server and cliet implemetations for use in web and .NET environments
+
+5. **Multiple Context**: Helper classes to allow multiple contexts per model
 ```cs
 var modelPath = "<Your model path>"; // change it to your own model path
 var prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request."; 
@@ -40,22 +59,6 @@ while (prompt != "stop")
 	prompt = System.Console.ReadLine();
 }
 ```
-
-
-## Projects
-
-Here are the UI projects included in LLamaHub:
-
-1. **LLamaWeb**: ASP.NET Core Web interface with all the base functions of llama.cpp & LLamaSharp
-[WebInterface Demo](https://llamaweb.chainstack.nz/)
-
-2. **LLamaAPI**: ASP.NET Core WebAPI implemntation with all the base functions of llama.cpp & LLamaSharp
-
-3. **LLamaWPF**: WPF UI interface with all the base functions of llama.cpp & LLamaSharp
-
-4. **LLamaSignalr**: Signale websocket server and cliet implemetations for use in web and .NET environments
-
-
 
 
 ## Getting Started
