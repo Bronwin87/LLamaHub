@@ -1,6 +1,5 @@
 ﻿# LLamaHub
 
-[Include your project logo or an image related to your project here if you have one]
 
 ## Overview
 
