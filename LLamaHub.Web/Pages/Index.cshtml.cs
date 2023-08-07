@@ -1,5 +1,4 @@
 ﻿using LLamaHub.Core.Config;
-using LLamaHub.Core.Models;
 using LLamaHub.Core.Services;
 using LLamaHub.Web.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -11,9 +10,9 @@ namespace LLamaHub.Web.Pages
     public class IndexModel : PageModel
     {
         private readonly ILogger<IndexModel> _logger;
-        private readonly IModelSessionService _modelSessionService;
+        private readonly IModelSessionService<string> _modelSessionService;
 
-        public IndexModel(ILogger<IndexModel> logger, IOptions<LLamaHubConfig> options, IModelSessionService modelSessionService)
+        public IndexModel(ILogger<IndexModel> logger, IOptions<LLamaHubConfig> options, IModelSessionService<string> modelSessionService)
         {
             _logger = logger;
             Options = options.Value;
@@ -23,11 +22,11 @@ namespace LLamaHub.Web.Pages
         public LLamaHubConfig Options { get; set; }
 
         [BindProperty]
-        public CreateSessionModel SessionOptions { get; set; }
+        public SessionConfig SessionOptions { get; set; }
 
         public void OnGet()
         {
-            SessionOptions = new CreateSessionModel
+            SessionOptions = new SessionConfig
             {
                 Prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.",
                 AntiPrompt = "User:",

@@ -6,7 +6,7 @@ namespace LLamaHub.Web.Hubs
     public interface ISessionClient
     {
         Task OnStatus(string connectionId, SessionConnectionStatus status);
-        Task OnResponse(ResponseFragment fragment);
+        Task OnResponse(InferFragment fragment);
         Task OnError(string error);
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace LLamaHub.Core.Models
 {
-    public class ResponseFragment
+    public class InferFragment
     {
         public string Id { get; set; }
         public string Content { get; set; }

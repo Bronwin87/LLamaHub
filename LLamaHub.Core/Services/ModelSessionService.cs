@@ -12,67 +12,46 @@ namespace LLamaHub.Core.Services
     /// Example Service for handling a model session for a websockets connection lifetime
     /// Each websocket connection will create its own unique session and context allowing you to use multiple tabs to compare prompts etc
     /// </summary>
-    public class ModelSessionService : IModelSessionService
+    public class ModelSessionService<T> : IModelSessionService<T>
     {
         private readonly LLamaHubConfig _options;
-        private readonly ILogger<ModelSessionService> _logger;
         private readonly IModelService _modelService;
-        private readonly ConcurrentDictionary<string, ModelSession> _modelSessions;
+        private readonly ILogger<ModelSessionService<T>> _logger;
+        private readonly ConcurrentDictionary<T, ModelSession> _modelSessions;
 
 
-        public ModelSessionService(ILogger<ModelSessionService> logger, IOptions<LLamaHubConfig> options, IModelService modelService)
+        public ModelSessionService(ILogger<ModelSessionService<T>> logger, IOptions<LLamaHubConfig> options, IModelService modelService)
         {
             _logger = logger;
             _options = options.Value;
             _modelService = modelService;
-            _modelSessions = new ConcurrentDictionary<string, ModelSession>();
+            _modelSessions = new ConcurrentDictionary<T, ModelSession>();
         }
 
-        public Task<ModelSession> GetAsync(string sessionId)
+        public Task<ModelSession> GetAsync(T sessionId)
         {
             _modelSessions.TryGetValue(sessionId, out var modelSession);
             return Task.FromResult(modelSession);
         }
 
 
-        public async Task<ModelSession> CreateAsync(string sessionId, CreateSessionModel sessionModel)
+        public async Task<ModelSession> CreateAsync(T sessionId, ISessionConfig sessionConfig)
         {
             // Remove existing connections session
             await RemoveAsync(sessionId);
 
-            var modelOption = _options.Models.FirstOrDefault(x => x.Name == sessionModel.Model);
-            if (modelOption is null)
-                throw new Exception($"Model option '{sessionModel.Model}' not found");
-
+            var modelConfig = _options.Models.FirstOrDefault(x => x.Name == sessionConfig.Model);
+            if (modelConfig is null)
+                throw new Exception($"Model option '{sessionConfig.Model}' not found");
 
             //Max instance
-            var currentInstances = _modelSessions.Count(x => x.Value.ModelName == modelOption.Name);
-            if (modelOption.MaxInstances > -1 && currentInstances >= modelOption.MaxInstances)
+            var currentInstances = _modelSessions.Count(x => x.Value.ModelName == modelConfig.Name);
+            if (modelConfig.MaxInstances > -1 && currentInstances >= modelConfig.MaxInstances)
                 throw new Exception($"Maximum model instances reached");
 
-            // Create Model/Context
-            var llamaModelContext = await CreateModelContext(sessionId, modelOption);
-
-            // Create executor
-            ILLamaHubExecutor executor = sessionModel.ExecutorType switch
-            {
-                LLamaExecutorType.Interactive => new LLamaHubInteractiveExecutor(llamaModelContext),
-                LLamaExecutorType.Instruct => new LLamaHubInstructExecutor(llamaModelContext),
-                LLamaExecutorType.Stateless => new LLamaHubStatelessExecutor(llamaModelContext),
-                _ => default
-            };
-
-            // Create Prompt
-            var promptOption = new PromptConfig
-            {
-                Name = "Custom",
-                Prompt = sessionModel.Prompt,
-                AntiPrompt = CreateListFromCSV(sessionModel.AntiPrompt),
-                OutputFilter = CreateListFromCSV(sessionModel.OutputFilter),
-            };
-
-            // Create session
-            var modelSession = new ModelSession(executor, modelOption, promptOption, sessionModel);
+            // Create context session
+            var context = await CreateModelContext(sessionId, modelConfig);
+            var modelSession = new ModelSession(context, modelConfig, sessionConfig);
             if (!_modelSessions.TryAdd(sessionId, modelSession))
                 throw new Exception($"Failed to create model session");
 
@@ -80,7 +59,7 @@ namespace LLamaHub.Core.Services
         }
 
 
-        public async IAsyncEnumerable<ResponseFragment> InferAsync(string sessionId, string prompt, CancellationTokenSource cancellationTokenSource)
+        public async IAsyncEnumerable<InferFragment> InferAsync(T sessionId, string prompt, CancellationTokenSource cancellationTokenSource)
         {
             var modelSession = await GetAsync(sessionId);
             if (modelSession is null)
@@ -91,7 +70,7 @@ namespace LLamaHub.Core.Services
 
             // Send begin of response
             var stopwatch = Stopwatch.GetTimestamp();
-            yield return new ResponseFragment
+            yield return new InferFragment
             {
                 Id = responseId,
                 IsFirst = true
@@ -100,7 +79,7 @@ namespace LLamaHub.Core.Services
             // Send content of response
             await foreach (var fragment in modelSession.InferAsync(prompt, cancellationTokenSource))
             {
-                yield return new ResponseFragment
+                yield return new InferFragment
                 {
                     Id = responseId,
                     Content = fragment
@@ -112,7 +91,7 @@ namespace LLamaHub.Core.Services
             var signature = modelSession.IsInferCanceled()
                   ? $"Inference cancelled after {elapsedTime.TotalSeconds:F0} seconds"
                   : $"Inference completed in {elapsedTime.TotalSeconds:F0} seconds";
-            yield return new ResponseFragment
+            yield return new InferFragment
             {
                 Id = responseId,
                 IsLast = true,
@@ -123,7 +102,7 @@ namespace LLamaHub.Core.Services
         }
 
 
-        public async Task<bool> RemoveAsync(string sessionId)
+        public async Task<bool> RemoveAsync(T sessionId)
         {
             if (_modelSessions.TryRemove(sessionId, out var modelSession))
             {
@@ -132,12 +111,12 @@ namespace LLamaHub.Core.Services
                 if (llamaModel is null)
                     return false;
 
-                return await llamaModel.RemoveContext(sessionId);
+                return await llamaModel.RemoveContext(sessionId.ToString());
             }
             return false;
         }
 
-        public Task<bool> CancelAsync(string sessionId)
+        public Task<bool> CancelAsync(T sessionId)
         {
             if (_modelSessions.TryGetValue(sessionId, out var modelSession))
             {
@@ -147,7 +126,7 @@ namespace LLamaHub.Core.Services
             return Task.FromResult(false);
         }
 
-        private async Task<LLamaHubModelContext> CreateModelContext(string sessionId, ModelConfig modelOption)
+        private async Task<LLamaHubModelContext> CreateModelContext(T sessionId, ModelConfig modelOption)
         {
             // Create model
             var llamaModel = await _modelService.GetModel(modelOption.Name)
@@ -156,22 +135,12 @@ namespace LLamaHub.Core.Services
                 throw new Exception($"Failed to create model, modelName: {modelOption.Name}");
 
             //Create context
-            var llamaModelContext = await llamaModel.GetContext(sessionId)
-                                 ?? await llamaModel.CreateContext(sessionId);
+            var llamaModelContext = await llamaModel.GetContext(sessionId.ToString())
+                                 ?? await llamaModel.CreateContext(sessionId.ToString());
             if (llamaModelContext is null)
                 throw new Exception($"Failed to create model, connectionId: {sessionId}");
 
             return llamaModelContext;
-        }
-
-        private List<string> CreateListFromCSV(string csv)
-        {
-            if (string.IsNullOrEmpty(csv))
-                return null;
-
-            return csv.Split(",")
-                 .Select(x => x.Trim())
-                 .ToList();
         }
     }
 }

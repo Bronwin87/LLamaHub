@@ -21,7 +21,7 @@ namespace LLamaHub.Web
 
             // Services DI
             builder.Services.AddSingleton<IModelService, ModelService>();
-            builder.Services.AddSingleton<IModelSessionService, ModelSessionService>();
+            builder.Services.AddSingleton<IModelSessionService<string>, ModelSessionService<string>>();
 
 
             var app = builder.Build();

@@ -23,7 +23,7 @@ namespace LLamaHub.Core.Config
         public int BatchSize { get; set; } = 512;
         public bool ConvertEosToNewLine { get; set; } = false;
         public bool EmbeddingMode { get; set; } = false;
-        public float[] TensorSplits { get; set; } = new float[] { 0 };
+        public nint TensorSplits { get; set; }
         public int GroupedQueryAttention { get; set; } = 1;
         public float RmsNormEpsilon { get; set; } = 5e-6f;
         public float RopeFrequencyBase { get; set; } = 10000.0f;

@@ -1,6 +1,6 @@
 ﻿namespace LLamaHub.Core.Config
 {
-    public class PromptConfig
+    public class PromptConfig : IPromptParams
     {
         public string Name { get; set; }
         public string Path { get; set; }

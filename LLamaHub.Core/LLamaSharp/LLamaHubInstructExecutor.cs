@@ -160,7 +160,7 @@ namespace LLamaHub.Core.LLamaSharp
 
                 if (_pastTokensCount > 0 && args.WaitForInput)
                 {
-                    extraOutputs = new string[] { "\n> " };
+                   // extraOutputs = new string[] { "\n> " };
                     return true;
                 }
             }

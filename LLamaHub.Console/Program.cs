@@ -31,7 +31,7 @@ namespace LLamaHub.Console
                 .Bind(configuration.GetSection(nameof(LLamaHubConfig)));
 
             serviceCollection.AddSingleton<IModelService, ModelService>();
-            serviceCollection.AddSingleton<IModelSessionService, ModelSessionService>();
+            serviceCollection.AddSingleton<IModelSessionService<int>, ModelSessionService<int>>();
             serviceCollection.AddTransient<App>();
 
 

@@ -1,14 +1,16 @@
-﻿using LLamaHub.Core.Models;
+﻿using LLamaHub.Core.Config;
+using LLamaHub.Core.Models;
 
 namespace LLamaHub.Core.Services
 {
-    public interface IModelSessionService
+    public interface IModelSessionService<T>
     {
-        Task<ModelSession> GetAsync(string sessionId);
-        Task<ModelSession> CreateAsync(string sessionId, CreateSessionModel sessionModel);
-        Task<bool> RemoveAsync(string sessionId);
-        Task<bool> CancelAsync(string sessionId);
-        IAsyncEnumerable<ResponseFragment> InferAsync(string sessionId, string prompt, CancellationTokenSource cancellationTokenSource);
+        Task<ModelSession> GetAsync(T sessionId);
+        Task<bool> RemoveAsync(T sessionId);
+        Task<bool> CancelAsync(T sessionId);
+
+        Task<ModelSession> CreateAsync(T sessionId, ISessionConfig sessionConfig);
+        IAsyncEnumerable<InferFragment> InferAsync(T sessionId, string prompt, CancellationTokenSource cancellationTokenSource);
     }
 
 }

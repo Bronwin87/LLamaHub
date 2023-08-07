@@ -1,4 +1,4 @@
-﻿using LLamaHub.Core.Models;
+﻿using LLamaHub.Core.Config;
 using LLamaHub.Core.Services;
 using LLamaHub.Web.Common;
 using Microsoft.AspNetCore.SignalR;
@@ -8,9 +8,9 @@ namespace LLamaHub.Web.Hubs
     public class SessionConnectionHub : Hub<ISessionClient>
     {
         private readonly ILogger<SessionConnectionHub> _logger;
-        private readonly IModelSessionService _modelSessionService;
+        private readonly IModelSessionService<string> _modelSessionService;
 
-        public SessionConnectionHub(ILogger<SessionConnectionHub> logger, IModelSessionService modelSessionService)
+        public SessionConnectionHub(ILogger<SessionConnectionHub> logger, IModelSessionService<string> modelSessionService)
         {
             _logger = logger;
             _modelSessionService = modelSessionService;
@@ -37,16 +37,15 @@ namespace LLamaHub.Web.Hubs
 
 
         [HubMethodName("LoadModel")]
-        public async Task OnLoadModel(CreateSessionModel sessionModel)
+        public async Task OnLoadModel(SessionConfig sessionModel)
         {
             _logger.Log(LogLevel.Information, "[OnLoadModel] - Load new model, Connection: {0}", Context.ConnectionId);
           
-
             // Create model session
-            var modelSessionResult = await _modelSessionService.CreateAsync(Context.ConnectionId, sessionModel);
-            if (modelSessionResult.HasError)
+            var modelSession = await _modelSessionService.CreateAsync(Context.ConnectionId, sessionModel);
+            if (modelSession is null)
             {
-                await Clients.Caller.OnError(modelSessionResult.Error);
+                await Clients.Caller.OnError("Failed to create model session");
                 return;
             }
 

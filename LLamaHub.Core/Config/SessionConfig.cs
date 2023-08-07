@@ -1,10 +1,9 @@
-﻿using LLama.Abstractions;
-using LLama.Common;
+﻿using LLama.Common;
 
 
-namespace LLamaHub.Core.Models
+namespace LLamaHub.Core.Config
 {
-    public class CreateSessionModel : IInferenceParams
+    public class SessionConfig : ISessionConfig
     {
         public string Model { get; set; }
         public string Prompt { get; set; }
